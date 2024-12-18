@@ -1,4 +1,4 @@
-name: Automated Versioning
+name: Automated Versioning with Tags Based on Commit Messages
 
 on:
   push:
@@ -14,18 +14,54 @@ jobs:
       - name: Check out the code
         uses: actions/checkout@v3
 
-      # Step 2: Set up Node.js (required for semantic-release)
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 16
+      # Step 2: Get the latest tag
+      - name: Get latest tag
+        id: tag
+        run: |
+          git fetch --tags
+          TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "latest_tag=$TAG" >> $GITHUB_ENV
 
-      # Step 3: Install dependencies
-      - name: Install dependencies
-        run: npm install
+      # Step 3: Determine version bump based on commit messages
+      - name: Analyze commits for version bump
+        id: bump
+        run: |
+          TAG=${{ env.latest_tag }}
+          VERSION=${TAG#v}  # Remove 'v' prefix
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
 
-      # Step 4: Run semantic-release
-      - name: Run semantic-release
+          # Analyze commits
+          COMMITS=$(git log --pretty=%B ${TAG}..HEAD)  # Get commit messages since last tag
+          BUMP="patch"  # Default to patch
+
+          if echo "$COMMITS" | grep -q "BREAKING CHANGE"; then
+            BUMP="major"
+          elif echo "$COMMITS" | grep -q "^feat:"; then
+            BUMP="minor"
+          elif echo "$COMMITS" | grep -q "^fix:"; then
+            BUMP="patch"
+          fi
+
+          # Calculate the new version
+          if [ "$BUMP" = "major" ]; then
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+          elif [ "$BUMP" = "minor" ]; then
+            MINOR=$((MINOR + 1))
+            PATCH=0
+          elif [ "$BUMP" = "patch" ]; then
+            PATCH=$((PATCH + 1))
+          fi
+
+          NEW_VERSION="v$MAJOR.$MINOR.$PATCH"
+          echo "new_version=$NEW_VERSION" >> $GITHUB_ENV
+          echo "Version bump: $BUMP to $NEW_VERSION"
+
+      # Step 4: Create and push the new tag
+      - name: Create and push new tag
+        run: |
+          git tag ${{ env.new_version }}
+          git push origin ${{ env.new_version }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx semantic-release
