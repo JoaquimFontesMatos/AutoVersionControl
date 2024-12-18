@@ -18,8 +18,16 @@ jobs:
       - name: Get latest tag
         id: tag
         run: |
-          git fetch --tags
+          git fetch --tags --depth=1
           TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
+          
+          # Check if the tag is "none" but there are still tags present
+          if [ "$TAG" = "none" ]; then
+            echo "No existing tags found. Starting versioning from v0.0.1."
+            TAG="v0.0.0"  # Default to a starting version if no tags found
+          else
+            echo "Latest tag found: $TAG"
+          fi
           echo "latest_tag=$TAG" >> $GITHUB_ENV
 
       # Step 3: Determine version bump based on commit messages
@@ -77,6 +85,7 @@ jobs:
           git push origin ${{ env.new_version }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       # Step 4: Generate Release Notes
       - name: Generate Release Notes
         run: |
