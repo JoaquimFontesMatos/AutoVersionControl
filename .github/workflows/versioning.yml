@@ -77,3 +77,44 @@ jobs:
           git push origin ${{ env.new_version }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Step 4: Generate Release Notes
+      - name: Generate Release Notes
+        run: |
+          COMMITS=$(git log --pretty=format:"* %s" ${TAG}..HEAD)
+          echo "Release Notes:" > RELEASE_NOTES.md
+          echo "$COMMITS" >> RELEASE_NOTES.md
+          cat RELEASE_NOTES.md
+
+      # Step 5: Create and push the new tag
+      - name: Create and push new tag
+        run: |
+          git tag ${{ env.new_version }}
+          git push origin ${{ env.new_version }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Step 6: Commit and push the generated RELEASE_NOTES.md file
+      - name: Commit and push RELEASE_NOTES.md
+        run: |
+          git add RELEASE_NOTES.md
+          git commit -m "chore: update release notes for ${{ env.new_version }}"
+          git push origin main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Step 7: Update the CHANGELOG.md file
+      - name: Update CHANGELOG.md
+        run: |
+          COMMITS=$(git log --pretty=format:"* %s" ${TAG}..HEAD)
+          echo "## $NEW_VERSION - $(date +'%Y-%m-%d')" >> CHANGELOG.md
+          echo "$COMMITS" >> CHANGELOG.md
+          cat CHANGELOG.md
+
+      # Step 8: Commit and push the updated CHANGELOG.md file
+      - name: Commit and push CHANGELOG.md
+        run: |
+          git add CHANGELOG.md
+          git commit -m "chore: update changelog for ${{ env.new_version }}"
+          git push origin main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
