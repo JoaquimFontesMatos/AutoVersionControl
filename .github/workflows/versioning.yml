@@ -21,10 +21,10 @@ jobs:
           git fetch --tags --depth=1
           TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
           
-          # Check if the tag is "none" but there are still tags present
+          # Check if no tag is found and default to v0.0.0
           if [ "$TAG" = "none" ]; then
-            echo "No existing tags found. Starting versioning from v0.0.1."
-            TAG="v0.0.0"  # Default to a starting version if no tags found
+            echo "No existing tags found. Starting versioning from v0.0.0."
+            TAG="v0.0.0"
           else
             echo "Latest tag found: $TAG"
           fi
@@ -36,24 +36,15 @@ jobs:
         run: |
           TAG=${{ env.latest_tag }}
 
-          # Check if there are no tags
-          if [ "$TAG" = "none" ]; then
-            echo "No existing tags found. Defaulting to analyze all commits."
-            COMMITS=$(git log --pretty=%B)
-            MAJOR=0
-            MINOR=0
-            PATCH=0
-          else
-            echo "Latest tag found: $TAG"
-            VERSION=${TAG#v}  # Remove 'v' prefix
-            IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
-            COMMITS=$(git log --pretty=%B ${TAG}..HEAD)
-          fi
+          # Remove 'v' from the tag to get version numbers
+          VERSION=${TAG#v}  
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          COMMITS=$(git log --pretty=%B ${TAG}..HEAD)
 
           # Default version bump type
           BUMP="patch"
 
-          # Determine version bump based on commit messages
+          # Check commit messages for version bump type
           if echo "$COMMITS" | grep -q "BREAKING CHANGE"; then
             BUMP="major"
           elif echo "$COMMITS" | grep -q "^feat:"; then
@@ -86,21 +77,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Step 4: Generate Release Notes
+      # Step 5: Generate Release Notes
       - name: Generate Release Notes
         run: |
           COMMITS=$(git log --pretty=format:"* %s" ${TAG}..HEAD)
           echo "Release Notes:" > RELEASE_NOTES.md
           echo "$COMMITS" >> RELEASE_NOTES.md
           cat RELEASE_NOTES.md
-
-      # Step 5: Create and push the new tag
-      - name: Create and push new tag
-        run: |
-          git tag ${{ env.new_version }}
-          git push origin ${{ env.new_version }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Step 6: Commit and push the generated RELEASE_NOTES.md file
       - name: Commit and push RELEASE_NOTES.md
