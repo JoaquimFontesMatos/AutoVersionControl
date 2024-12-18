@@ -14,12 +14,12 @@ jobs:
       - name: Check out the code
         uses: actions/checkout@v3
 
-      # Step 2: Get the latest tag
+      # Step 2: Get the latest tag or handle no tags
       - name: Get latest tag
         id: tag
         run: |
           git fetch --tags
-          TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
           echo "latest_tag=$TAG" >> $GITHUB_ENV
 
       # Step 3: Determine version bump based on commit messages
@@ -27,13 +27,25 @@ jobs:
         id: bump
         run: |
           TAG=${{ env.latest_tag }}
-          VERSION=${TAG#v}  # Remove 'v' prefix
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
 
-          # Analyze commits
-          COMMITS=$(git log --pretty=%B ${TAG}..HEAD)  # Get commit messages since last tag
-          BUMP="patch"  # Default to patch
+          # Check if there are no tags
+          if [ "$TAG" = "none" ]; then
+            echo "No existing tags found. Defaulting to analyze all commits."
+            COMMITS=$(git log --pretty=%B)
+            MAJOR=0
+            MINOR=0
+            PATCH=0
+          else
+            echo "Latest tag found: $TAG"
+            VERSION=${TAG#v}  # Remove 'v' prefix
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+            COMMITS=$(git log --pretty=%B ${TAG}..HEAD)
+          fi
 
+          # Default version bump type
+          BUMP="patch"
+
+          # Determine version bump based on commit messages
           if echo "$COMMITS" | grep -q "BREAKING CHANGE"; then
             BUMP="major"
           elif echo "$COMMITS" | grep -q "^feat:"; then
