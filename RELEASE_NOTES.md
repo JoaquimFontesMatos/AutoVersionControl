@@ -1,3 +1,7 @@
+## v3.0.6 - 2024-12-19
+* fix: Update versioning.yml
+* chore: update changelog for v3.0.5
+* chore: update release notes for v3.0.5
 ## v3.0.5 - 2024-12-19
 * fix: Update versioning.yml
 * chore: update changelog for v3.0.4
