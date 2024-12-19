@@ -1,3 +1,5 @@
+## v5.0.2 - 2024-12-19
+* Delete test.txt
 ## v5.0.0 - 2024-12-19
 * feat: Update test.txt
 * chore: update release notes and changelog for v4.0.1
