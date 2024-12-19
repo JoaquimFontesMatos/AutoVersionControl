@@ -76,7 +76,7 @@ jobs:
           git config --local user.email "actions@github.com"
           git config --local user.name "GitHub Actions"
           
-      # Step 7: Commit and push RELEASE_NOTES.md
+     # Step 7: Update RELEASE_NOTES.md
       - name: Update RELEASE_NOTES.md
         run: |
           PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "v0.0.0")
@@ -87,9 +87,10 @@ jobs:
             exit 0
           fi
       
-          echo "## ${{ env.new_version }} - $(date +'%Y-%m-%d')" >> RELEASE_NOTES.md
+          # Prepend the new version and commits to the release notes
+          echo "## ${{ env.new_version }} - $(date +'%Y-%m-%d')" > RELEASE_NOTES.md
           echo "$COMMITS" >> RELEASE_NOTES.md
-      
+          
           git add RELEASE_NOTES.md
           if git diff --cached --quiet; then
             echo "No changes to commit in RELEASE_NOTES.md."
@@ -110,9 +111,10 @@ jobs:
             exit 0
           fi
       
-          echo "## ${{ env.new_version }} - $(date +'%Y-%m-%d')" >> CHANGELOG.md
+          # Prepend the new version and commits to the changelog
+          echo "## ${{ env.new_version }} - $(date +'%Y-%m-%d')" > CHANGELOG.md
           echo "$COMMITS" >> CHANGELOG.md
-      
+          
           git add CHANGELOG.md
           if git diff --cached --quiet; then
             echo "No changes to commit in CHANGELOG.md."
