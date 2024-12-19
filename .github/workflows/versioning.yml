@@ -25,21 +25,31 @@ jobs:
           if [ "$TAG" = "none" ]; then
             echo "No existing tags found. Starting versioning from v0.0.0."
             TAG="v0.0.0"
+            NO_TAGS=true
           else
             echo "Latest tag found: $TAG"
+            NO_TAGS=false
           fi
           echo "latest_tag=$TAG" >> $GITHUB_ENV
+          echo "no_tags=$NO_TAGS" >> $GITHUB_ENV
 
       # Step 3: Determine version bump based on commit messages
       - name: Analyze commits for version bump
         id: bump
         run: |
           TAG=${{ env.latest_tag }}
+          NO_TAGS=${{ env.no_tags }}
 
           # Remove 'v' from the tag to get version numbers
           VERSION=${TAG#v}  
           IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
-          COMMITS=$(git log --pretty=%B ${TAG}..HEAD)
+
+          # Analyze commits based on whether there are previous tags
+          if [ "$NO_TAGS" = "true" ]; then
+            COMMITS=$(git log --pretty=%B)
+          else
+            COMMITS=$(git log --pretty=%B ${TAG}..HEAD)
+          fi
 
           # Default version bump type
           BUMP="patch"
@@ -80,7 +90,15 @@ jobs:
       # Step 5: Generate Release Notes
       - name: Generate Release Notes
         run: |
-          COMMITS=$(git log --pretty=format:"* %s" ${TAG}..HEAD)
+          NO_TAGS=${{ env.no_tags }}
+          TAG=${{ env.latest_tag }}
+
+          if [ "$NO_TAGS" = "true" ]; then
+            COMMITS=$(git log --pretty=format:"* %s")
+          else
+            COMMITS=$(git log --pretty=format:"* %s" ${TAG}..HEAD)
+          fi
+
           echo "Release Notes:" > RELEASE_NOTES.md
           echo "$COMMITS" >> RELEASE_NOTES.md
           cat RELEASE_NOTES.md
@@ -97,8 +115,16 @@ jobs:
       # Step 7: Update the CHANGELOG.md file
       - name: Update CHANGELOG.md
         run: |
-          COMMITS=$(git log --pretty=format:"* %s" ${TAG}..HEAD)
-          echo "## $NEW_VERSION - $(date +'%Y-%m-%d')" >> CHANGELOG.md
+          NO_TAGS=${{ env.no_tags }}
+          TAG=${{ env.latest_tag }}
+
+          if [ "$NO_TAGS" = "true" ]; then
+            COMMITS=$(git log --pretty=format:"* %s")
+          else
+            COMMITS=$(git log --pretty=format:"* %s" ${TAG}..HEAD)
+          fi
+
+          echo "## ${{ env.new_version }} - $(date +'%Y-%m-%d')" >> CHANGELOG.md
           echo "$COMMITS" >> CHANGELOG.md
           cat CHANGELOG.md
 
