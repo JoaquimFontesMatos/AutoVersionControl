@@ -1,3 +1,6 @@
+## v5.0.4 - 2024-12-19
+* Update README.md
+* chore: update release notes and changelog for v5.0.3
 ## v5.0.3 - 2024-12-19
 * Create LICENSE
 * chore: update release notes and changelog for v5.0.2
