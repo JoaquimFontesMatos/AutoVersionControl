@@ -13,25 +13,19 @@ jobs:
       # Step 1: Check out the repository
       - name: Check out the code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Ensure full history is fetched
 
       # Step 2: Fetch all tags
       - name: Fetch tags
         run: git fetch --tags
 
-      # Step 3: Get the latest tag
+      # Step 3: Get the latest tag or default to v0.0.0
       - name: Get latest tag
         id: tag
         run: |
-          # Try to find the latest tag
-          TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
-
-          if [ "$TAG" != "none" ]; then
-            echo "Latest tag found: $TAG"
-          else
-            echo "No tags found. Defaulting to v0.0.0."
-            TAG="v0.0.0"
-          fi
-
+          TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $TAG"
           echo "latest_tag=$TAG" >> $GITHUB_ENV
 
       # Step 4: Determine version bump based on commit messages
@@ -39,24 +33,12 @@ jobs:
         id: bump
         run: |
           TAG=${{ env.latest_tag }}
+          VERSION=${TAG#v}  # Remove 'v' prefix
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
 
-          if [ "$TAG" = "v0.0.0" ]; then
-            # No tags exist, analyze all commits
-            COMMITS=$(git log --pretty=%B)
-            MAJOR=0
-            MINOR=0
-            PATCH=0
-          else
-            # Extract version components from the tag
-            VERSION=${TAG#v}
-            IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
-            COMMITS=$(git log --pretty=%B ${TAG}..HEAD)
-          fi
+          COMMITS=$(git log --pretty=%B ${TAG}..HEAD)
 
-          # Default version bump type
           BUMP="patch"
-
-          # Check commit messages for version bump type
           if echo "$COMMITS" | grep -q "BREAKING CHANGE"; then
             BUMP="major"
           elif echo "$COMMITS" | grep -q "^feat:"; then
@@ -65,7 +47,6 @@ jobs:
             BUMP="patch"
           fi
 
-          # Calculate the new version
           if [ "$BUMP" = "major" ]; then
             MAJOR=$((MAJOR + 1))
             MINOR=0
@@ -78,18 +59,47 @@ jobs:
           fi
 
           NEW_VERSION="v$MAJOR.$MINOR.$PATCH"
+          echo "New version: $NEW_VERSION"
           echo "new_version=$NEW_VERSION" >> $GITHUB_ENV
-          echo "Version bump: $BUMP to $NEW_VERSION"
 
-      # Step 5: Create and push the new tag (if not exists)
+      # Step 5: Create and push the new tag
       - name: Create and push new tag
         run: |
-          if git rev-parse ${{ env.new_version }} >/dev/null 2>&1; then
-            echo "Tag ${{ env.new_version }} already exists. Skipping tag creation."
-          else
-            git tag ${{ env.new_version }}
-            git push origin ${{ env.new_version }}
-          fi
+          git tag ${{ env.new_version }}
+          git push origin ${{ env.new_version }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Step 6: Generate Release Notes
+      - name: Generate Release Notes
+        run: |
+          COMMITS=$(git log --pretty=format:"* %s" ${TAG}..HEAD)
+          echo "Release Notes:" > RELEASE_NOTES.md
+          echo "$COMMITS" >> RELEASE_NOTES.md
+          cat RELEASE_NOTES.md
+
+      # Step 7: Commit and push the generated RELEASE_NOTES.md file
+      - name: Commit and push RELEASE_NOTES.md
+        run: |
+          git add RELEASE_NOTES.md
+          git commit -m "chore: update release notes for ${{ env.new_version }}"
+          git push origin main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Step 8: Update the CHANGELOG.md file
+      - name: Update CHANGELOG.md
+        run: |
+          COMMITS=$(git log --pretty=format:"* %s" ${TAG}..HEAD)
+          echo "## ${{ env.new_version }} - $(date +'%Y-%m-%d')" >> CHANGELOG.md
+          echo "$COMMITS" >> CHANGELOG.md
+          cat CHANGELOG.md
+
+      # Step 9: Commit and push the updated CHANGELOG.md file
+      - name: Commit and push CHANGELOG.md
+        run: |
+          git add CHANGELOG.md
+          git commit -m "chore: update changelog for ${{ env.new_version }}"
+          git push origin main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
