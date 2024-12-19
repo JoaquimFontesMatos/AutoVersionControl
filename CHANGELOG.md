@@ -8,3 +8,8 @@
 
 ## v2.1.0 - 2024-12-19
 
+## v2.1.1 - 2024-12-19
+
+## v2.1.1 - 2024-12-19
+* fix: Update versioning.yml
+* chore: update changelog for v2.1.0
