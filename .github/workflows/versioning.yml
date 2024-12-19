@@ -14,40 +14,42 @@ jobs:
       - name: Check out the code
         uses: actions/checkout@v3
 
-      # Step 2: Get the latest tag or handle no tags
+      # Step 2: Fetch all tags
+      - name: Fetch tags
+        run: git fetch --tags
+
+      # Step 3: Get the latest tag
       - name: Get latest tag
         id: tag
         run: |
-          git fetch --tags --depth=1
+          # Try to find the latest tag
           TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "none")
-          
-          # Check if no tag is found and default to v0.0.0
-          if [ "$TAG" = "none" ]; then
-            echo "No existing tags found. Starting versioning from v0.0.0."
-            TAG="v0.0.0"
-            NO_TAGS=true
-          else
-            echo "Latest tag found: $TAG"
-            NO_TAGS=false
-          fi
-          echo "latest_tag=$TAG" >> $GITHUB_ENV
-          echo "no_tags=$NO_TAGS" >> $GITHUB_ENV
 
-      # Step 3: Determine version bump based on commit messages
+          if [ "$TAG" != "none" ]; then
+            echo "Latest tag found: $TAG"
+          else
+            echo "No tags found. Defaulting to v0.0.0."
+            TAG="v0.0.0"
+          fi
+
+          echo "latest_tag=$TAG" >> $GITHUB_ENV
+
+      # Step 4: Determine version bump based on commit messages
       - name: Analyze commits for version bump
         id: bump
         run: |
           TAG=${{ env.latest_tag }}
-          NO_TAGS=${{ env.no_tags }}
 
-          # Remove 'v' from the tag to get version numbers
-          VERSION=${TAG#v}  
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
-
-          # Analyze commits based on whether there are previous tags
-          if [ "$NO_TAGS" = "true" ]; then
+          if [ "$TAG" = "v0.0.0" ]; then
+            # No tags exist, analyze all commits
             COMMITS=$(git log --pretty=%B)
+            MAJOR=0
+            MINOR=0
+            PATCH=0
           else
+            # Extract version components from the tag
+            VERSION=${TAG#v}
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
             COMMITS=$(git log --pretty=%B ${TAG}..HEAD)
           fi
 
@@ -79,21 +81,23 @@ jobs:
           echo "new_version=$NEW_VERSION" >> $GITHUB_ENV
           echo "Version bump: $BUMP to $NEW_VERSION"
 
-      # Step 4: Create and push the new tag
+      # Step 5: Create and push the new tag (if not exists)
       - name: Create and push new tag
         run: |
-          git tag ${{ env.new_version }}
-          git push origin ${{ env.new_version }}
+          if git rev-parse ${{ env.new_version }} >/dev/null 2>&1; then
+            echo "Tag ${{ env.new_version }} already exists. Skipping tag creation."
+          else
+            git tag ${{ env.new_version }}
+            git push origin ${{ env.new_version }}
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Step 5: Generate Release Notes
+      # Step 6: Generate Release Notes
       - name: Generate Release Notes
         run: |
-          NO_TAGS=${{ env.no_tags }}
           TAG=${{ env.latest_tag }}
-
-          if [ "$NO_TAGS" = "true" ]; then
+          if [ "$TAG" = "v0.0.0" ]; then
             COMMITS=$(git log --pretty=format:"* %s")
           else
             COMMITS=$(git log --pretty=format:"* %s" ${TAG}..HEAD)
@@ -103,7 +107,7 @@ jobs:
           echo "$COMMITS" >> RELEASE_NOTES.md
           cat RELEASE_NOTES.md
 
-      # Step 6: Commit and push the generated RELEASE_NOTES.md file
+      # Step 7: Commit and push the generated RELEASE_NOTES.md file
       - name: Commit and push RELEASE_NOTES.md
         run: |
           git add RELEASE_NOTES.md
@@ -112,13 +116,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Step 7: Update the CHANGELOG.md file
+      # Step 8: Update the CHANGELOG.md file
       - name: Update CHANGELOG.md
         run: |
-          NO_TAGS=${{ env.no_tags }}
           TAG=${{ env.latest_tag }}
-
-          if [ "$NO_TAGS" = "true" ]; then
+          if [ "$TAG" = "v0.0.0" ]; then
             COMMITS=$(git log --pretty=format:"* %s")
           else
             COMMITS=$(git log --pretty=format:"* %s" ${TAG}..HEAD)
@@ -128,7 +130,7 @@ jobs:
           echo "$COMMITS" >> CHANGELOG.md
           cat CHANGELOG.md
 
-      # Step 8: Commit and push the updated CHANGELOG.md file
+      # Step 9: Commit and push the updated CHANGELOG.md file
       - name: Commit and push CHANGELOG.md
         run: |
           git add CHANGELOG.md
