@@ -117,6 +117,6 @@ jobs:
             exit 0
           fi
       
-          git commit -m "chore: update release notes for ${{ env.new_version + 1}}"
-          git commit -m "chore: update changelog for ${{ env.new_version + 1}}"
+          git commit -m "chore: update release notes for ${{ env.new_version }}"
+          git commit -m "chore: update changelog for ${{ env.new_version }}"
           git push origin main
