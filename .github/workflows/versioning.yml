@@ -70,28 +70,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Step 6: Generate Release Notes
-      - name: Generate Release Notes
-        run: |
-          COMMITS=$(git log --pretty=format:"* %s" ${TAG}..HEAD)
-          echo "Release Notes:" > RELEASE_NOTES.md
-          echo "$COMMITS" >> RELEASE_NOTES.md
-          cat RELEASE_NOTES.md
-
-      # Step 8: Update the CHANGELOG.md file
-      - name: Update CHANGELOG.md
-        run: |
-          COMMITS=$(git log --pretty=format:"* %s" ${TAG}..HEAD)
-          echo "## ${{ env.new_version }} - $(date +'%Y-%m-%d')" >> CHANGELOG.md
-          echo "$COMMITS" >> CHANGELOG.md
-          cat CHANGELOG.md
-
-      # Step 9: Commit and push the updated CHANGELOG.md file
+      # Step 6: Commit and push the updated CHANGELOG.md file
       - name: Configure Git identity
         run: |
           git config --local user.email "actions@github.com"
           git config --local user.name "GitHub Actions"
-      # Step 6: Commit and push RELEASE_NOTES.md
+          
+      # Step 7: Commit and push RELEASE_NOTES.md
       - name: Update RELEASE_NOTES.md
         run: |
           PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "v0.0.0")
@@ -114,7 +99,7 @@ jobs:
           git commit -m "chore: update release notes for ${{ env.new_version }}"
           git push origin main
       
-      # Step 7: Update CHANGELOG.md
+      # Step 8: Update CHANGELOG.md
       - name: Update CHANGELOG.md
         run: |
           PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "v0.0.0")
