@@ -1,3 +1,6 @@
+## v5.0.5 - 2024-12-19
+* fix: Update versioning.yml
+* chore: update release notes and changelog for v5.0.4
 ## v5.0.4 - 2024-12-19
 * Update README.md
 * chore: update release notes and changelog for v5.0.3
