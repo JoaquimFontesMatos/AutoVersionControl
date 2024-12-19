@@ -76,12 +76,13 @@ jobs:
           git config --local user.email "actions@github.com"
           git config --local user.name "GitHub Actions"
           
-      # Step 7: Update RELEASE_NOTES.md
+       # Step 7: Update RELEASE_NOTES.md
       - name: Update RELEASE_NOTES.md
         run: |
           PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "v0.0.0")
+          # Get all commits since the previous tag, excluding 'chore' commits
           COMMITS=$(git log --pretty=format:"* %s" ${PREVIOUS_TAG}..HEAD)
-          
+      
           if [ -z "$COMMITS" ]; then
             echo "No new commits found. Skipping release notes update."
             exit 0
@@ -110,8 +111,9 @@ jobs:
       - name: Update CHANGELOG.md
         run: |
           PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "v0.0.0")
+          # Get all commits since the previous tag, excluding 'chore' commits
           COMMITS=$(git log --pretty=format:"* %s" ${PREVIOUS_TAG}..HEAD)
-          
+      
           if [ -z "$COMMITS" ]; then
             echo "No new commits found. Skipping changelog update."
             exit 0
@@ -135,3 +137,4 @@ jobs:
       
           git commit -m "chore: update changelog for ${{ env.new_version }}"
           git push origin main
+
