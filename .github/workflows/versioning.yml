@@ -77,7 +77,7 @@ jobs:
           git config --local user.name "GitHub Actions"
           
        # Step 7: Update RELEASE_NOTES.md
-      - name: Update RELEASE_NOTES.md
+      - name: Update RELEASE_NOTES.md and CHANGELOG.md
         run: |
           PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "v0.0.0")
           COMMITS=$(git log --pretty=format:"* %s" ${PREVIOUS_TAG}..HEAD)
@@ -117,6 +117,5 @@ jobs:
             exit 0
           fi
       
-          git commit -m "chore: update release notes for ${{ env.new_version }}"
-          git commit -m "chore: update changelog for ${{ env.new_version }}"
+          git commit -m "chore: update release notes and changelog for ${{ env.new_version }}"
           git push origin main
